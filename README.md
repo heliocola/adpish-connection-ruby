@@ -1,3 +1,10 @@
+# DISCLAIMER
+This gem used to be hosted in https://github.com/adplabs/adp-connection-ruby until (at least) June 20th 2022.
+
+This repo contains a copy that was available in my local machine.
+
+This version is ahead of the one in Rubygems: https://rubygems.org/gems/adp-connection and it includes a gemspec without specific version of the `json` gem and some updates to this file.
+
 ## ADP Marketplace Partners
 
 There are a few pre-requesites that you need to fullfill in order to use this library:
