@@ -92,7 +92,7 @@ module Adp
         end
 
         # @return [Object]
-        def get_adp_data(product_url)
+        def get_adp_data(product_url, headers = {}, body_only = true)
 
             raise ConnectionException, "Connection error: can't get data, not connected" if (self.access_token.nil? || !is_connected_indicator?)
 
@@ -106,17 +106,21 @@ module Adp
                 "redirect_uri" => self.connection_configuration.redirectURL
             };
 
-            data = send_web_request(product_url, data, authorization, 'application/json', 'GET')
+            headers = headers.merge({"Authorization" => authorization})
 
+            response = send_web_request(product_url, data, headers, 'GET')
+
+            # Get parsed body and rescue in case "response.body" is not JSON parsable
+            body = JSON.parse(response.body) rescue {}
             raise ConnectionException, "Connection error: #{data['error']}, #{data['error_description']}" unless data["error"].nil?
 
-            return data
+            body_only ? return body : return response
         end
 
-        def send_web_request(url, data={}, authorization=nil, content_type=nil, method=nil)
+        def send_web_request(url, data={}, headers = {}, method=nil)
 
           data ||= {}
-          content_type ||= "application/x-www-form-urlencoded"
+          headers["Content-Type"] ||= "application/x-www-form-urlencoded"
           method ||= 'POST'
 
             log = Logger.new(STDOUT)
@@ -139,25 +143,23 @@ module Adp
                 http.cert = OpenSSL::X509::Certificate.new( pem );
                 http.key = OpenSSL::PKey::RSA.new(key, self.connection_configuration.sslKeyPass);
                 http.verify_mode = OpenSSL::SSL::VERIFY_PEER
-                http.cert_store = OpenSSL::X509::Store.new
-                http.cert_store.add_file(self.connection_configuration.sslCaPath)
             end
 
             if method.eql?('POST')
               request = Net::HTTP::Post.new(uri.request_uri)
               request.set_form_data( data );
+              headers = headers.merge({"User-Agent" => useragent })
             else
               request = Net::HTTP::Get.new(uri.request_uri)
             end
 
-            request.initialize_http_header({"User-Agent" => useragent })
+            request.initialize_http_header(headers)
 
-            request["Content-Type"] = content_type
-
-            # add credentials if available
-            request["Authorization"] = authorization unless authorization.nil?
-
-            response = JSON.parse(http.request(request).body)
+            if request.method.eql?('POST')
+              return JSON.parse(http.request(request).body)
+            else
+              return http.request(request)
+            end
         end
     end
   end
